@@ -1,0 +1,61 @@
+
+  <details id="Details-HeaderSubMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grandchildlink.handle }}">
+    <summary
+      id="HeaderMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grandchildlink.handle }}"
+      class="header__menu-item link link--text list-menu__item focus-inset caption-large"
+    >
+      <span>{{ grandchildlink.title | escape }}</span>
+      {{- 'icon-caret.svg' | inline_asset_content -}}
+    </summary>
+    <ul
+      id="HeaderMenu-SubMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grandchildlink.handle }}"
+      class="header__submenu list-menu motion-reduce menu-level-4"
+    >
+      {%- for grand in linklists[menu_handle].links -%}
+        <li>
+          {%- if grand.links == blank -%}
+            <a
+              id="HeaderMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grand.handle }}"
+              href="{{ grand.url }}"
+              class="header__menu-item list-menu__item link link--text focus-inset caption-large{% if grand.current %} list-menu__item--active{% endif %}"
+              {% if grand.current %}
+                aria-current="page"
+              {% endif %}
+            >
+              {{ grand.title | escape }}
+            </a>
+          {% else %}
+            <details id="Details-HeaderSubMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grandchildlink.handle }}-{{ grand.handle }}">
+              <summary
+                id="HeaderMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grandchildlink.handle }}-{{ grand.handle }}"
+                class="header__menu-item link link--text list-menu__item focus-inset caption-large"
+              >
+                <span>{{ grand.title | escape }}</span>
+                {{- 'icon-caret.svg' | inline_asset_content -}}
+              </summary>
+              <ul
+                id="HeaderMenu-SubMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grandchildlink.handle }}-{{ grand.handle }}"
+                class="header__submenu list-menu motion-reduce menu-level-5"
+              >
+                {%- for grand2 in grand.links -%}
+                  <li>
+                    <a
+                      id="HeaderMenu-{{ link.handle }}-{{ childlink.handle }}-{{ grand.handle }}-{{ grand2.handle }}"
+                      href="{{ grand2.url }}"
+                      class="header__menu-item list-menu__item link link--text focus-inset caption-large{% if grand.current %} list-menu__item--active{% endif %}"
+                      {% if grand2.current %}
+                        aria-current="page"
+                      {% endif %}
+                    >
+                      {{ grand2.title | escape }}
+                    </a>
+                  </li>
+                {%- endfor -%}
+              </ul>
+            </details>
+          {% endif %}
+        </li>
+      {%- endfor -%}
+    </ul>
+  </details>
+

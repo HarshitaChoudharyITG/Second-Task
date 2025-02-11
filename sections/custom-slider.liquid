@@ -1,0 +1,314 @@
+<style>
+.slider-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+}
+
+.custom-slider {
+    display: flex;
+    transition: transform 1s ease;
+    margin: 0;
+    padding: 0;
+}
+
+.custom-slide {
+  text-align: center;
+  padding: 50px 0;
+}
+.slide-show-1 li{
+   min-width: 100%;
+}  
+.slide-show-2 li{
+   min-width: 50%;
+}
+.slide-show-3 li{
+   min-width: 33.3%;
+}
+.slide-show-4 li{
+   min-width: 25%;
+}
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 2rem;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.left {
+  left: 10px;
+}
+
+.right {
+  right: 10px;
+}
+
+.dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+}
+
+.dot {
+  height: 10px;
+  width: 10px;
+  margin: 0 5px;
+  background-color: #bbb;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.dot.active {
+  background-color: #717171;
+} 
+.heading{
+  text-align:center;
+  margin:20px 0px;
+}
+</style>
+<div class="page-width">
+  <div class="heading h2">{{ section.settings.heading }}</div>
+  <div class="collection-grid slider-container" auto-slide="{{ section.settings.auto_slide_enabled | default: false }}" auto-slide-time="{{ section.settings.auto_slide_interval }}">
+    <ul class="custom-slider slide-show-{{ section.settings.show }}" count="{{ section.settings.show }}">
+      {% for product in section.settings.collection.products %}
+        <li class="custom-slide" style="list-style:none;"><img src="{{ product.featured_image | img_url:'medium' }}" width="" height=""></li>
+      {% endfor %}
+    </ul>
+    <button class="arrow left"> < </button>
+    <button class="arrow right"> > </button>
+    <div class="dots">
+      
+    </div>
+  </div>
+</div>
+      
+{% javascript %}
+// Slider Code
+  
+class Slider {
+  constructor(sliderElement, prevButton, nextButton, dotsContainer, settings) {
+    this.sliderElement = sliderElement;
+    this.slides = sliderElement.children;
+    this.prevButton = prevButton;
+    this.nextButton = nextButton;
+    this.dotsContainer = dotsContainer;
+    this.currentIndex = 0;
+    this.totalSlides = this.slides.length;
+    this.itemsPerSlide = settings.itemsPerSlide;
+    this.autoSlideEnabled = settings.autoSlideEnabled;
+    this.autoSlideInterval = settings.autoSlideInterval;
+    
+    this.createDots();
+    this.updateSlider();
+    this.keyArrow();
+
+    this.isDragging = false;
+    this.startX = 0;
+    this.draggedDistance = 0;
+    
+    // Auto-slide functionality
+    if (this.autoSlideEnabled) {
+      this.startAutoSlide();
+    }
+
+    this.prevButton.addEventListener('click', () => this.moveSlide(-1));
+    this.nextButton.addEventListener('click', () => this.moveSlide(1));
+    this.dotsContainer.addEventListener('click', (e) => this.dotClick(e));
+    this.sliderElement.addEventListener('mouseenter', () => this.pauseAutoSlide());
+    this.sliderElement.addEventListener('mouseleave', () => this.resumeAutoSlide());
+
+    // Drag-and-drop functionality
+    this.sliderElement.addEventListener('mousedown', (e) => this.onDragStart(e));
+    document.addEventListener('mousemove', (e) => this.onDragMove(e));
+    document.addEventListener('mouseup', () => this.onDragEnd())   
+  }
+
+  createDots() {
+     const totalDots = Math.ceil(this.totalSlides / this.itemsPerSlide);
+    for (let i = 0; i < totalDots; i++) {
+      const dot = document.createElement('span');
+      dot.classList.add('dot');
+      this.dotsContainer.appendChild(dot);
+    }
+    this.dots = this.dotsContainer.children;
+  }
+
+updateSlider() {
+  const newTranslateX = -((this.currentIndex * 100) / this.itemsPerSlide); // Calculate how much to translate based on the current index
+  this.sliderElement.style.transform = `translateX(${newTranslateX}%)`; // Apply the translate transform
+
+  // Update dots
+  for (let i = 0; i < this.dots.length; i++) {
+    if (i === Math.floor(this.currentIndex / this.itemsPerSlide)) {
+      this.dots[i].classList.add('active');
+    } else {
+      this.dots[i].classList.remove('active');
+    }
+  }
+}
+
+
+  moveSlide(step) {
+    this.currentIndex += step;
+
+    if (this.currentIndex < 0) {
+      this.currentIndex = this.totalSlides - this.itemsPerSlide;
+    } else if (this.currentIndex >= this.totalSlides) {
+      this.currentIndex = 0;
+    }
+    this.updateSlider();
+  }
+
+  dotClick(e) {
+    if (e.target.classList.contains('dot')) {
+      let index;
+      for (let i = 0; i < this.dots.length; i++) {
+        if (this.dots[i] === e.target) {
+          index = i;
+          break;
+        }
+      }
+      this.currentIndex = index * this.itemsPerSlide;
+      this.updateSlider();
+    }
+  }
+
+  keyArrow() {
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") this.moveSlide(-1);
+      if (e.key === "ArrowRight") this.moveSlide(1);
+    });
+  }
+
+  // Auto-slide functionality
+  startAutoSlide() {
+    if(settings.autoSlideEnabled == 'true'){
+    this.autoSlideIntervalId = setInterval(() => {
+      this.moveSlide(1);
+    }, this.autoSlideInterval);
+  }
+  }
+
+  pauseAutoSlide() {
+    clearInterval(this.autoSlideIntervalId);
+  }
+
+  resumeAutoSlide() {
+    if (this.autoSlideEnabled) {
+      this.startAutoSlide();
+    }
+  }
+  
+// Drag-and-Drop methods
+  
+  onDragStart(e) {
+    e.preventDefault();
+    this.isDragging = true;
+    this.startX = e.pageX || e.touches[0].pageX;
+    this.draggedDistance = 0;
+  }
+
+  onDragMove(e) {
+        e.preventDefault();
+    if (!this.isDragging) return;
+
+    const moveX = (e.pageX || e.touches[0].pageX) - this.startX;
+    this.draggedDistance = moveX;
+
+    const newTranslateX = -((this.currentIndex * 100) / this.itemsPerSlide) + (this.draggedDistance / window.innerWidth) * 100;
+    this.sliderElement.style.transform = `translateX(${newTranslateX}%)`;
+  }
+
+  onDragEnd() {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    const threshold = window.innerWidth / 4;
+
+    if (Math.abs(this.draggedDistance) > threshold) {
+      this.currentIndex += this.draggedDistance > 0 ? -1 : 1;
+      if (this.currentIndex < 0) {
+        this.currentIndex = this.totalSlides - this.itemsPerSlide;
+      } else if (this.currentIndex >= this.totalSlides) {
+        this.currentIndex = 0;
+      }
+    }
+
+    this.updateSlider();
+  }
+
+}
+
+const sliderElement = document.querySelector('.custom-slider');
+const prevButton = document.querySelector('.arrow.left');
+const nextButton = document.querySelector('.arrow.right');
+const dotsContainer = document.querySelector('.dots');
+
+  
+const settings = {
+  autoSlideEnabled: document.querySelector('.slider-container').getAttribute('auto-slide'),
+  autoSlideInterval: document.querySelector('.slider-container').getAttribute('auto-slide-time'),
+  itemsPerSlide:sliderElement.getAttribute('count')
+};
+
+const customSlider = new Slider(sliderElement, prevButton, nextButton, dotsContainer, settings);
+
+{% endjavascript %}
+
+{% schema %}
+  {
+    "name": "Custom-Slide",
+      "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+    "settings": [
+      {
+        "type": "text",
+        "id": "heading",
+        "label": "Heading"
+      },
+      {
+        "type": "collection",
+        "id": "collection",
+        "label": "Select Collection"
+      },
+      {
+        "type": "range",
+        "id": "show",
+        "label": "Slide Show",
+        "min": 1,
+        "max": 4,
+        "step": 1,
+        "default": 1
+      },
+      {
+        "type": "checkbox",
+        "id": "auto_slide_enabled",
+        "label": "Enable Auto-Slide",
+        "default": false
+      },
+      {
+        "type": "range",
+        "id": "auto_slide_interval",
+        "label": "Auto-Slide Interval (ms)",
+        "min": 1000,
+        "max": 9000,
+        "step": 500,
+        "default": 3000
+      }
+    ],
+    "presets": [
+      {
+        "name": "Custom-Slide"
+      }
+    ]
+  }
+{% endschema %}
