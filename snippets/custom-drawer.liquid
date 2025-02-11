@@ -1,0 +1,474 @@
+{{ 'component-card.css' | asset_url | stylesheet_tag }}
+{{ 'component-cart-drawer.css' | asset_url | stylesheet_tag }}
+
+<div  class="cart__drawer right-to-left-open">
+  <div class="cart__drawer-section">
+    <div class="cart__drawer-top">
+      <div class="cart__drawer-heading">
+        <div class="heading-text text-center">
+         <h2 class="drawer__heading">{{ 'sections.cart.title' | t }}</h2>
+          <span class="cross">X</span>
+        </div>
+        <div class="cv--shipping">
+          <span class="cv--free-shipping">Product</span>
+        </div>
+      </div>
+    </div>
+    <div class="cart__drawer-center">
+      {%- if cart == empty -%}
+        <div class="drawer__inner-empty">
+          <div class="cart-drawer__warnings center{% if settings.cart_drawer_collection != blank %} cart-drawer__warnings--has-collection{% endif %}">
+            <div class="cart-drawer__empty-content">
+              <h2 class="h2">{{ 'sections.cart.empty' | t }}
+              </h2>
+              <a href="{{ routes.all_products_collection_url }}" class="button">
+                {{ 'general.continue_shopping' | t }}
+              </a>
+
+              {%- if shop.customer_accounts_enabled and customer == null -%}
+                <p class="cart__login-title h3">{{ 'sections.cart.login.title' | t }}</p>
+                <p class="cart__login-paragraph">
+                  {{ 'sections.cart.login.paragraph_html' | t: link: routes.account_login_url }}
+                </p>
+              {%- endif -%}
+            </div>
+          </div>
+        </div>
+      {%- endif -%}
+      
+      {% if cart.item_count >= 1 %}
+      <form action="/cart" method="post" enctype="multipart/form-data" class="cart__drawer-form">
+        <div class="cart__drawer-item grid--uniform">
+          {% for item in cart.items %}
+          <div class="cart_items">
+            <div class="grid__item medium-up--one-third">
+              <div class="item__image">
+                <a href="{{ item.url }}">
+                  <img src="{{ item.image | img_url: '100x100' }}">
+                </a>
+              </div>
+            </div>
+            
+            <div class="grid__item medium-up--one-third">
+              <div class="cart_items-title">
+                <a href="{{ item.url }}" class="cart-item__name h4 break">
+                    {{ item.product.title }}                 
+                </a>
+              </div>
+              <div class="product-option">
+               {{ item.final_line_price | money }}
+              </div>
+                        {%- if item.product.has_only_default_variant == false
+                            or item.properties.size != 0
+                            or item.selling_plan_allocation != null
+                          -%}
+                            <dl>
+                              {%- if item.product.has_only_default_variant == false -%}
+                                {%- for option in item.options_with_values -%}
+                                  <div class="product-option">
+                                    <dt>{{ option.name }}:</dt>
+                                    <dd>
+                                      {{ option.value -}}
+                                      {%- unless forloop.last %}, {% endunless %}
+                                    </dd>
+                                  </div>
+                                {%- endfor -%}
+                              {%- endif -%}
+
+                              {%- for property in item.properties -%}
+                                {%- assign property_first_char = property.first | slice: 0 -%}
+                                {%- if property.last != blank and property_first_char != '_' -%}
+                                  <div class="product-option">
+                                    <dt>{{ property.first }}:</dt>
+                                    <dd>
+                                      {%- if property.last contains '/uploads/' -%}
+                                        <a
+                                          href="{{ property.last }}"
+                                          class="link"
+                                          target="_blank"
+                                          aria-describedby="a11y-new-window-message"
+                                        >
+                                          {{ property.last | split: '/' | last }}
+                                        </a>
+                                      {%- else -%}
+                                        {{ property.last }}
+                                      {%- endif -%}
+                                    </dd>
+                                  </div>
+                                {%- endif -%}
+                              {%- endfor -%}
+                            </dl>
+
+                            <p class="product-option">{{ item.selling_plan_allocation.selling_plan.name }}</p>
+                          {%- endif -%}
+              <div class="remove__item">
+                <a href="{{ routes.cart_change_url }}?line={{ forloop.index }}&amp;quantity=0" class="cart__remove">
+               remove          
+                </a>
+              </div>
+            </div>
+            <div class=" grid__item medium-up--one-third">
+              <div class="qtySelector">
+                <button type="button" id="m-btn" class="minus" value="-">-</button>
+                <input type="text" name="updates[]" id="updates_{{ forloop.index }}" class="item-qty" pattern="[0-9]*" min="1" value="{{ item.quantity }}">
+                <button type="button" id="p-btn" class="plus" value="+">+</button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+         <div class="drawer__footer">
+  <div class="cart-drawer__footer" {{ block.shopify_attributes }}>
+           <div class="totals" role="status">
+            <h2 class="totals__total">{{ 'sections.cart.estimated_total' | t }}</h2>
+            <p class="totals__total-value">{{ cart.total_price | money_with_currency }}</p>
+          </div>
+              <small class="tax-note caption-large rte">
+            {%- if cart.duties_included and cart.taxes_included -%}
+              {%- if shop.shipping_policy.body == blank -%}
+                {{ 'sections.cart.duties_and_taxes_included_shipping_at_checkout_without_policy' | t }}
+              {%- else -%}
+                {{
+                  'sections.cart.duties_and_taxes_included_shipping_at_checkout_with_policy_html'
+                  | t: link: shop.shipping_policy.url
+                }}
+              {%- endif -%}
+            {%- elsif cart.duties_included == false and cart.taxes_included -%}
+              {%- if shop.shipping_policy.body == blank -%}
+                {{ 'sections.cart.taxes_included_shipping_at_checkout_without_policy' | t }}
+              {%- else -%}
+                {{
+                  'sections.cart.taxes_included_shipping_at_checkout_with_policy_html'
+                  | t: link: shop.shipping_policy.url
+                }}
+              {%- endif -%}
+            {%- elsif cart.duties_included and cart.taxes_included == false -%}
+              {%- if shop.shipping_policy.body == blank -%}
+                {{ 'sections.cart.duties_included_taxes_at_checkout_shipping_at_checkout_without_policy' | t }}
+              {%- else -%}
+                {{
+                  'sections.cart.duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html'
+                  | t: link: shop.shipping_policy.url
+                }}
+              {%- endif -%}
+            {%- elsif cart.duties_included == false and cart.taxes_included == false -%}
+              {%- if shop.shipping_policy.body == blank -%}
+                {{ 'sections.cart.taxes_at_checkout_shipping_at_checkout_without_policy' | t }}
+              {%- else -%}
+                {{
+                  'sections.cart.taxes_at_checkout_shipping_at_checkout_with_policy_html'
+                  | t: link: shop.shipping_policy.url
+                }}
+              {%- endif -%}
+            {%- endif -%}
+          </small>
+     </div>
+        <div class="cart__ctas" {{ block.shopify_attributes }}>
+          <button
+            type="submit"
+            id="CartDrawer-Checkout"
+            class="cart__checkout-button button"
+            name="checkout"
+            form="CartDrawer-Form"
+            {% if cart == empty %}
+              disabled
+            {% endif %}
+          >
+            {{ 'sections.cart.checkout' | t }}
+          </button>
+        </div>
+     
+          </div>
+      </form>
+      {% endif %}
+    </div>
+        
+  </div>
+</div>
+
+<style>
+  /* Cart Drawer CSS */
+.cart__drawer {
+      display: block;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      z-index: 999999;
+      background: #fff;
+      -webkit-transition: all 0.35s cubic-bezier(0.46, 0.01, 0.32, 1);
+      -moz-transition: all 0.35s cubic-bezier(0.46, 0.01, 0.32, 1);
+      -ms-transition: all 0.35s cubic-bezier(0.46, 0.01, 0.32, 1);
+      -o-transition: all 0.35s cubic-bezier(0.46, 0.01, 0.32, 1);
+      transition: all 0.35s cubic-bezier(0.46, 0.01, 0.32, 1);
+      max-width: 100%;
+      padding: 0 0px 30px;
+      overflow: auto;
+      left: -400px;
+      width:400px;
+}
+
+.cv--show-cart__drawer:before{
+      position: fixed;
+      content: "";
+      background: rgba(0, 0, 0, 0.8);
+      height: 100%;
+      width: 100%;
+      z-index: 9999;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+}
+
+.cart__drawer .cart_items {
+    display: flex;
+    align-items: center;
+    border-bottom: 0.5px solid #ccc;
+    padding: 10px 0;
+}
+.qtySelector {
+    border: 1px solid #000;
+    padding: 4px;
+    width: 100%;
+    max-width: fit-content;
+}
+.cart__drawer.show-cart__drawer {
+     transform: translateX(-0px);
+     left: 0;
+}
+
+.cart__drawer-section {
+    height: 100%;
+    overflow: auto;
+    background: white;
+    padding: 0 15px;
+}
+
+span.cross {
+      font-size: 18px;
+      cursor:pointer;
+}
+
+.item-qty {
+      width: 35px;
+      height: 28px;
+      text-align: center;
+      background: none;
+      border: none;
+      padding: 0;
+}
+
+.minus {
+      background: none;
+      border: none;
+}
+
+a.cart__remove {
+      color: #c73948;
+      padding: 0;
+      border: none;
+      font-size: 10px;
+      display: inline-block;
+      text-align: left;
+      text-transform: uppercase;
+}
+
+.plus{
+      background: none;
+      border: none;
+}
+.show-cart__drawer{
+      display: block;
+}
+.cart__drawer-top {
+      border-bottom: 1px solid #f7f8f9;
+}
+  .heading-text.text-center {
+    display: flex;
+    justify-content: space-between;
+}
+
+  .cart__drawer-section .totals{
+    justify-content: space-between; 
+  }
+  .cart__drawer-section .tax-note{
+    text-align:center;
+  }
+ .cart__drawer-section .cart_items dl {
+    margin: 0;
+}
+  .cart__drawer-section .cart__drawer-center .drawer__inner-empty {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: max-content;
+}
+</style>
+
+
+<script>
+  // Change in Cart
+function updateQuantity(line, quantity) {
+  fetch('/cart/change', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `quantity=${quantity}&line=${line}`,
+  }).then(response => response.json()).then(cart => {
+    onCartUpdate();
+    buble();
+  });
+}
+
+   function onCartUpdate() {
+      fetch(`${routes.cart_url}?section_id=cart-drawer`)
+        .then((response) => response.text())
+        .then((responseText) => {
+          const html = new DOMParser().parseFromString(responseText, 'text/html');
+          const selectors = ['cart-drawer-items', '.drawer__footer'];
+          for (const selector of selectors) {
+            const targetElement = document.querySelector(selector);
+            const sourceElement = html.querySelector(selector);
+            if (targetElement && sourceElement) {
+              targetElement.replaceWith(sourceElement);
+            }
+          }
+          document.querySelector('cart-drawer').classList.remove("is-empty");
+        })
+        .catch((e) => {
+          console.error(e);
+        });
+    
+  }
+
+  function buble(){
+      const container = document.getElementById("cart-icon-bubble");
+    fetch(location.href)
+        .then(response => response.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newContent = doc.getElementById("cart-icon-bubble").innerHTML;
+            container.innerHTML = newContent;
+        })
+        .catch(error => console.error("Error loading content: ", error));
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+ document.querySelectorAll('.view-cart').forEach(function (view) {
+    view.addEventListener('click', function (e) {
+    e.preventDefault();
+    document.querySelector('.cart__drawer').classList.add('show-cart__drawer');
+    document.body.classList.add('cv--show-cart__drawer');
+  });
+   });
+
+  document.querySelector('.cross').addEventListener('click', function () {
+    document.querySelector('.cart__drawer').classList.remove('show-cart__drawer');
+    document.body.classList.remove('cv--show-cart__drawer');
+  });
+
+
+});
+
+// ===============================================================================
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('cart__remove')) {
+      e.preventDefault();
+      const itemUrl = e.target.getAttribute('href');
+
+      fetch(itemUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to remove item from cart.');
+          }
+          return response.text();
+        })
+        .then(responseText => {
+          const parser = new DOMParser();
+          const responseDoc = parser.parseFromString(responseText, 'text/html');
+          const newCartDrawerItems = responseDoc.querySelector('.cart__drawer-item');
+          const newCartDrawer = responseDoc.querySelector('.cart__drawer');
+
+          if (newCartDrawerItems) {
+            document.querySelector('.cart__drawer-item').innerHTML = newCartDrawerItems.innerHTML;
+          }
+          if (newCartDrawer) {
+            document.querySelector('.cart__drawer').innerHTML = newCartDrawer.innerHTML;
+          }
+           onCartUpdate();
+           buble();
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Failed to remove item from cart. Please try again.');
+        });
+    }
+  });
+});
+
+
+
+// ===============================================================================
+
+
+  
+// Change In Quantity Selector
+document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('plus')) {
+      const input = e.target.previousElementSibling;
+      input.value = parseInt(input.value) + 1;
+
+      const form = e.target.closest('form');
+      const formData = new FormData(form);
+      const quantity = input.value;
+
+      updateQuantity(formData, quantity);
+       onCartUpdate();
+       buble();
+      
+      fetch('/cart/update', {
+        method: 'POST',
+        body: formData,
+      }).then(response => response.text())
+        .then(responseText => {
+          const parser = new DOMParser();
+          const responseDoc = parser.parseFromString(responseText, 'text/html');
+          document.querySelector('.cart__drawer-item').innerHTML = responseDoc.querySelector('.cart__drawer-item').innerHTML;
+          document.querySelector('.cart__drawer').innerHTML = responseDoc.querySelector('.cart__drawer').innerHTML;
+        });
+    }
+
+    if (e.target.classList.contains('minus')) {
+      const input = e.target.nextElementSibling;
+      if (parseInt(input.value) > 1) {
+        input.value = parseInt(input.value) - 1;
+
+        const form = e.target.closest('form');
+        const formData = new FormData(form);
+        const quantity = input.value;
+
+        updateQuantity(formData, quantity);
+        onCartUpdate();
+         buble();
+        
+        fetch('/cart/update', {
+          method: 'POST',
+          body: formData,
+        }).then(response => response.text())
+          .then(responseText => {
+            const parser = new DOMParser();
+            const responseDoc = parser.parseFromString(responseText, 'text/html');
+            document.querySelector('.cart__drawer-item').innerHTML = responseDoc.querySelector('.cart__drawer-item').innerHTML;
+            document.querySelector('.cart__drawer').innerHTML = responseDoc.querySelector('.cart__drawer').innerHTML;
+          });
+      }
+    }
+  });
+});
+
+</script>
